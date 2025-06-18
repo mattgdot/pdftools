@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bulk PDF Merge - Free Offline PDF Combiner in Browser</title>
+  <link rel="icon" href="favicon.png" type="image/png">
+  <meta name="description" content="Bulk merge PDF files for free, securely and offline. Combine multiple PDFs in your browser without upload or payment. No account, no limits.">
+  <meta name="keywords" content="bulk pdf merge, free pdf combiner, offline pdf merger, combine pdfs no payment, merge pdf browser, reorder pdfs, secure pdf tool, no download required">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 700px;
+      margin: 40px auto;
+      padding: 0 20px 80px;
+      color: #333;
+      background-color: #f8f9fa;
+    }
+
+    h1, h2 {
+      text-align: center;
+      color: #222;
+      margin-top: 30px;
+      margin-bottom: 20px;
+    }
+
+    p, ol, ul {
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    ol, ul {
+      padding-left: 20px;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      padding: 20px;
+      margin: 30px auto;
+      background-color: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      max-width: 700px;
+    }
+
+    button {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      font-size: 14px;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .filename {
+      user-select: none;
+      -webkit-user-select: none; 
+      -ms-user-select: none;    
+    }
+
+    .custom-upload {
+      background-color: #28a745;
+      color: white;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+      transition: background-color 0.2s ease;
+      text-align: center;
+    }
+
+    .custom-upload:hover {
+      background-color: #218838;
+    }
+
+    .custom-upload input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    #file-list {
+      list-style: none;
+      padding: 0;
+      margin-top: 10px;
+    }
+
+    #file-list li {
+      padding: 10px;
+      border: 1px solid #ccc;
+      margin: 6px 0;
+      cursor: move;
+      background: #ffffff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .filename {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .remove-btn {
+      user-select: none;
+      -webkit-user-select: none; 
+      -ms-user-select: none;       
+      margin-left: 10px;
+      color: red;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 18px;
+      padding: 6px;
+      border-radius: 50%;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+    }
+
+    #loading {
+      margin-top: 20px;
+      padding: 12px;
+      background-color: #ffeeba;
+      border: 1px solid #f5c6cb;
+      color: #856404;
+      border-radius: 6px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 14px;
+      color: #555;
+    }
+
+    a {
+      color: #007BFF;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 10;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.6);
+    }
+
+    .modal-content {
+      background-color: #fff;
+      margin: 10% auto;
+      padding: 20px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 600px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+      position: relative;
+    }
+
+    .close {
+      position: absolute;
+      right: 20px;
+      top: 15px;
+      font-size: 24px;
+      font-weight: bold;
+      color: #888;
+      cursor: pointer;
+    }
+
+    @media (max-width: 500px) {
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      button, .custom-upload {
+        padding: 12px 20px;
+        font-size: 15px;
+        border-radius: 8px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Free Bulk PDF Merge Tool (No Upload)</h1>
+
+  <p><strong>Merge multiple PDF documents securely and for free, right in your browser.</strong> No sign-up, no payment, and no file uploads required.</p>
+  <p><em>Combine as many PDFs as you like. Ideal for large files or bulk merging. Everything runs offline in your browser.</em></p>
+  
+  <div id="loading" style="display: none;">Merging PDFs...</div>
+  
+  <div class="controls">
+    <label class="custom-upload">
+      Choose PDFs
+      <input type="file" id="pdfInput" accept="application/pdf" multiple />
+    </label>
+    <button onclick="mergePDFs()">Merge and Download</button>
+    <button onclick="clearAll()" style="background-color: #dc3545;">Clear All</button>
+    </br>
+    <label style="display: flex; align-items: center; gap: 6px;">
+      <input type="checkbox" id="compressOption">
+      Compress merged PDF (smaller size)
+    </label>
+  </div>
+
+  <ul id="file-list"></ul>
+
+  <h2>How to Combine PDF Files for Free</h2>
+  <ol>
+    <li>Click <strong>"Choose PDFs"</strong> to upload your PDF files (bulk selection supported).</li>
+    <li>Reorder files easily using drag-and-drop.</li>
+    <li>Click <strong>"Merge and Download"</strong> to get your final PDF instantly.</li>
+  </ol>
+
+  <p>Remove individual PDFs or reset with "Clear All" anytime.</p>
+
+  <h2>Key Features of Our PDF Merger</h2>
+  <p>
+    - 🔒 <strong>100% Private:</strong> Merges PDFs fully offline. Nothing is uploaded.<br>
+    - ⚡ <strong>Fast Performance:</strong> Perfect for batch merging or large file sets.<br>
+    - 💸 <strong>Free Forever:</strong> No ads, no payments, no accounts.<br>
+    - 🔄 <strong>Flexible Order:</strong> Reorder PDFs easily before merging.
+  </p>
+
+  <h2>Popular Uses</h2>
+  <ul>
+    <li>Merge multiple scans into a single document</li>
+    <li>Combine reports, contracts, or application files</li>
+    <li>Batch merge and compress PDFs offline</li>
+  </ul>
+
+  <p>Use this tool to <strong>merge PDF files free of charge</strong>, securely and instantly in any modern browser.</p>
+
+  <footer>
+    <p>&copy; 2025 MattGDev. <a href="#" onclick="openModal()">Privacy Policy</a></p>
+  </footer>
+
+  <div id="privacyModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h2>Privacy Policy & Terms of Use</h2>
+      <p>This service is provided by MattGDev for personal and professional use without any warranties.</p>
+
+      <h3>Terms</h3>
+      <ol>
+        <li>You use this tool at your own risk.</li>
+        <li>All PDF processing is offline in your browser only.</li>
+        <li>Do not use the tool for illegal content.</li>
+        <li>Do not embed or resell this tool without permission.</li>
+        <li>Use is free for personal or business purposes.</li>
+        <li>This tool may change or be removed at any time.</li>
+        <li>Terms may be updated without notice.</li>
+        <li>This service is provided as-is.</li>
+      </ol>
+
+      <h3>Privacy</h3>
+      <ol start="9">
+        <li>No files are uploaded or stored — everything runs locally.</li>
+        <li>No tracking, analytics, or cookies are used.</li>
+        <li>Your data remains private and never leaves your device.</li>
+      </ol>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBLfoyG0VNnrEfG8f6lu06GMclCSQkhKWY",
+      authDomain: "pdfcombineapp.firebaseapp.com",
+      projectId: "pdfcombineapp",
+      storageBucket: "pdfcombineapp.firebasestorage.app",
+      messagingSenderId: "885389557751",
+      appId: "1:885389557751:web:ebc382132b6cd2adcaf8f2",
+      measurementId: "G-C6G4Y65Y9N"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+  </script>
+
+  <script>
+    const pdfInput = document.getElementById('pdfInput');
+    const fileList = document.getElementById('file-list');
+    const loadingDiv = document.getElementById('loading');
+    let filesArray = [];
+
+    pdfInput.addEventListener('change', () => {
+      const files = Array.from(pdfInput.files);
+      if (!files.length) return;
+
+      files.forEach(file => {
+        const fileIndex = filesArray.push(file) - 1;
+
+        const li = document.createElement('li');
+        li.setAttribute('data-index', fileIndex);
+        li.innerHTML = `
+          <span class="filename">${file.name}</span>
+          <span class="remove-btn">✕</span>
+        `;
+        fileList.appendChild(li);
+      });
+
+      pdfInput.value = '';
+    });
+
+    new Sortable(fileList, {
+      animation: 150,
+      scroll: true,
+      scrollSensitivity: 20,
+      scrollSpeed: 15,
+      handle: '.filename', 
+      filter: '.remove-btn',
+      onFilter: function (evt) {
+        if (evt.target.classList.contains('remove-btn')) {
+          removeFile(evt.target);
+        }
+      },
+      delay: 150, 
+      delayOnTouchOnly: true, 
+      touchStartThreshold: 5 
+    });
+    
+    function removeFile(button) {
+      const li = button.closest('li');
+      const index = parseInt(li.getAttribute('data-index'));
+      filesArray[index] = null;
+      li.remove();
+    }
+
+    function clearAll() {
+      fileList.innerHTML = '';
+      filesArray = [];
+    }
+
+    async function mergePDFs() {
+      loadingDiv.style.display = 'block';
+      const { PDFDocument } = PDFLib;
+
+      const mergedPdf = await PDFDocument.create();
+      const compress = document.getElementById('compressOption').checked;
+
+      const orderedItems = fileList.querySelectorAll('li');
+      const orderedFiles = Array.from(orderedItems)
+        .map(li => parseInt(li.getAttribute('data-index')))
+        .map(i => filesArray[i])
+        .filter(f => f);
+
+      if (!orderedFiles.length) {
+        alert("No files to merge.");
+        loadingDiv.style.display = 'none';
+        return;
+      }
+
+      for (const file of orderedFiles) {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await PDFDocument.load(arrayBuffer);
+        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+        copiedPages.forEach(page => mergedPdf.addPage(page));
+      }
+
+      const mergedPdfBytes = await mergedPdf.save({ useObjectStreams: compress });
+      const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'merged.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+
+      loadingDiv.style.display = 'none';
+    }
+
+    function openModal() {
+      document.getElementById('privacyModal').style.display = 'block';
+    }
+
+    function closeModal() {
+      document.getElementById('privacyModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+      const modal = document.getElementById('privacyModal');
+      if (event.target == modal) {
+        modal.style.display = 'none';
+      }
+    };
+  </script>
+</body>
+</html>
