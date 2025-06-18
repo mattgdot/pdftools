@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Watermark to PDF Locally - Bulk PDF Tool</title>
+  <link rel="icon" href="favicon.png" type="image/png">
+  <meta name="description" content="Add watermark to PDF files online for free. Upload your PDF, apply custom text or image watermarks directly in your browser. No uploads, no limits, 100% private." />
+  <meta name="keywords" content="watermark PDF, add watermark to PDF, online PDF watermark tool, secure PDF watermark, free PDF watermark generator, client-side PDF watermark" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 700px;
+      margin: 40px auto;
+      padding: 0 20px 80px;
+      color: #333;
+      background-color: #f8f9fa;
+    }
+
+    h1, h2 {
+      text-align: center;
+      color: #222;
+      margin-top: 30px;
+      margin-bottom: 20px;
+    }
+
+    p, ol, ul {
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    ol, ul {
+      padding-left: 20px;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      padding: 20px;
+      margin: 30px auto;
+      background-color: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      max-width: 700px;
+    }
+
+    button {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      font-size: 14px;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .filename {
+      user-select: none;
+      -webkit-user-select: none; 
+      -ms-user-select: none;   
+    }
+
+    .custom-upload {
+      background-color: #28a745;
+      color: white;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+      transition: background-color 0.2s ease;
+      text-align: center;
+    }
+
+    .custom-upload:hover {
+      background-color: #218838;
+    }
+
+    .custom-upload input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    #file-list {
+      list-style: none;
+      padding: 0;
+      margin-top: 10px;
+    }
+
+    #file-list li {
+      padding: 7px;
+      border: 1px solid #ccc;
+      margin: 6px 0;
+      cursor: move;
+      background: #ffffff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .filename {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .remove-btn {
+      user-select: none;
+      -webkit-user-select: none; 
+      -ms-user-select: none;     
+      margin-left: 10px;
+      color: red;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 18px;
+      padding: 6px;
+      border-radius: 50%;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+    }
+
+    #loading {
+      margin-top: 20px;
+      padding: 12px;
+      background-color: #ffeeba;
+      border: 1px solid #f5c6cb;
+      color: #856404;
+      border-radius: 6px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 14px;
+      color: #555;
+    }
+
+    a {
+      color: #007BFF;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 10;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.6);
+    }
+
+    .modal-content {
+      background-color: #fff;
+      margin: 10% auto;
+      padding: 20px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 600px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+      position: relative;
+    }
+
+    .close {
+      position: absolute;
+      right: 20px;
+      top: 15px;
+      font-size: 24px;
+      font-weight: bold;
+      color: #888;
+      cursor: pointer;
+    }
+
+    @media (max-width: 500px) {
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      button, .custom-upload {
+        padding: 12px 20px;
+        font-size: 15px;
+        border-radius: 8px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      }
+    }
+    form#watermarkForm {
+      max-width: 800px;
+      margin: 10px auto;
+      padding: 5px 10px;
+      background-color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      font-family: sans-serif;
+    }
+
+    .form-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .form-row label {
+      min-width: 150px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .form-row input,
+    .form-row select {
+      flex: 1;
+      padding: 5px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+      transition: border 0.2s;
+    }
+
+    .form-row input:focus,
+    .form-row select:focus {
+      border-color: #007BFF;
+      outline: none;
+    }
+
+    input[type="color"] {
+      padding: 4px;
+      height: 40px;
+      width: 80px;
+    }
+
+  </style>
+</head>
+<body>
+  <h1>Bulk Watermark PDF Files Online</h1>
+
+  <p><strong>Watermark your PDF documents securely and for free, directly in your browser.</strong> No installation, no upload to server — everything happens on your device.</p>
+  <p><em>You can watermark as many PDF files as you need. However, too many or large files may slow down your browser.</em></p>
+  
+  <div id="loading" style="display: none;">Watermarking PDFs...</div>
+  <ul id="file-list"></ul>
+  <div class="controls">
+    <label class="custom-upload">
+      Choose PDFs
+      <input type="file" id="pdfInput" accept="application/pdf" multiple />
+    </label>
+    <button onclick="watermarkPDFs()">Watermark and Download</button>
+    <button onclick="clearAll()" style="background-color: #dc3545;">Clear All</button>
+
+    <form id="watermarkForm">
+      <div class="form-row">
+        <label for="confText">Watermark Text</label>
+        <input type="text" id="confText" value="Confidential" />
+      </div>
+
+      <div class="form-row">
+        <label for="textFont">Font</label>
+        <select id="textFont">
+          <option value="Helvetica">Helvetica</option>
+          <option value="Helvetica-Bold">Helvetica Bold</option>
+          <option value="Helvetica-Oblique">Helvetica Italic</option>
+          <option value="Helvetica-BoldOblique">Helvetica Bold Italic</option>
+          <option value="Times-Roman">Times New Roman</option>
+          <option value="Times-Bold">Times Bold</option>
+          <option value="Times-Italic">Times Italic</option>
+          <option value="Times-BoldItalic">Times Bold Italic</option>
+          <option value="Courier">Courier</option>
+          <option value="Courier-Bold">Courier Bold</option>
+          <option value="Courier-Oblique">Courier Italic</option>
+          <option value="Courier-BoldOblique">Courier Bold Italic</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label for="textSize">Text Size</label>
+        <input type="number" id="textSize" value="50" />
+      </div>
+
+      <div class="form-row">
+        <label for="textRotation">Rotation (degrees)</label>
+        <input type="number" id="textRotation" value="-45" />
+      </div>
+
+      <div class="form-row">
+        <label for="textColor">Text Color</label>
+        <input type="color" id="textColor" value="#ff0000" />
+      </div>
+
+      <div class="form-row">
+        <label for="textOpacity">Opacity</label>
+        <input type="number" step="0.01" id="textOpacity" value="0.5" />
+      </div>
+
+      <div class="form-row">
+        <label for="position">Watermark Position</label>
+        <select id="position">
+          <option value="top-left">Top Left</option>
+          <option value="top-center">Top Center</option>
+          <option value="top-right">Top Right</option>
+          <option value="middle-left">Middle Left</option>
+          <option value="middle-center">Middle Center</option>
+          <option value="middle-right">Middle Right</option>
+          <option value="bottom-left">Bottom Left</option>
+          <option value="bottom-center">Bottom Center</option>
+          <option value="bottom-right">Bottom Right</option>
+          <option value="fill-page">Fill page</option>
+        </select>
+      </div>
+    </form>
+
+  </div>
+  <br>
+
+  <h2>Your Guide to Watermarking PDFs</h2>
+  <ol>
+    <li><strong>Upload & Arrange:</strong> Click <strong>"Choose PDFs"</strong> to select your files. Once they appear in the list, you can drag and drop them to set the desired order.</li>
+    <li><strong>Customize Your Watermark:</strong> Use the form to design your perfect watermark. You can set the text, choose a font, pick a color, adjust the opacity and rotation, and even select a <strong>Tiled</strong> style to cover the entire page.</li>
+    <li><strong>Apply & Download:</strong> Click the <strong>"Watermark and Download"</strong> button. Your newly protected files will be saved directly to your computer. (If you watermarked multiple files, they will be delivered in a convenient ZIP archive).</li>
+  </ol>
+
+  <p>You can remove individual files using the ✕ button or click "Clear All" to start fresh.</p>
+
+  <h2>Why Use This Watermark Tool?</h2>
+  <p>
+    - 🔒 <strong>Total Privacy:</strong> Your files are processed directly in your browser. They are never uploaded to a server, meaning your data remains 100% confidential and secure on your own computer.
+    <br>
+    - ✨ <strong>Powerful Customization:</strong> Go beyond simple text. Adjust fonts, colors, rotation, and opacity to create a watermark that fits your needs perfectly. Protect the entire document with a repeating pattern.
+    <br>
+    - ⚡ <strong>Instant Processing:</strong> No waiting in queues. The watermarking process happens on your device, delivering your files in seconds.
+    <br>
+    - 💯 <strong>Completely Free & Unlimited:</strong> Watermark as many PDFs as you need, as often as you want. There are no subscriptions, no limitations, and no hidden costs.
+    <br>
+    - 🖱️ <strong>Simple & Clean Interface:</strong> No ads, no sign-ups, and no distractions. Just a straightforward tool that gets the job done.
+  </p>
+
+  <h2>Common Use Cases</h2>
+  <ul>
+    <li><strong>Brand Your Documents:</strong> Add your company or project name to reports, invoices, and proposals.</li>
+    <li><strong>Indicate Document Status:</strong> Clearly label files with essential terms like "CONFIDENTIAL," "DRAFT," "FOR REVIEW," or "APPROVED."</li>
+    <li><strong>Protect Your Work:</strong> Safeguard your intellectual property—such as manuscripts, research papers, or legal documents—with a visible copyright notice or author credit.</li>
+    <li><strong>Personalize Before Sharing:</strong> Add your name or a unique identifier to personal files before sending them to others.</li>
+  </ul>
+
+  <p><strong>Ready to begin?</strong> Use this free tool to bulk watermark your PDF documents easily, securely, and instantly. Bookmark this page for quick access later!</p>
+
+  <footer>
+    <p>&copy; 2025 MattGDev. <a href="#" onclick="openModal()">Privacy Policy</a></p>
+  </footer>
+
+<div id="privacyModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal()">&times;</span>
+    <h2>Privacy Policy & Terms of Use</h2>
+    <p>This agreement describes the conditions and rules under which MattGDev ("our company", "we") offers you this service.</p>
+
+    <h3>Terms</h3>
+    <ol>
+      <li>Use of this tool is at your own risk.</li>
+      <li>All processing happens in your browser — no data is uploaded.</li>
+      <li>You agree not to use the service to process illegal materials.</li>
+      <li>You agree not to integrate this tool into third-party applications without permission.</li>
+      <li>You may use the tool for personal or commercial purposes.</li>
+      <li>We may change or discontinue this service at any time.</li>
+      <li>We may update these terms without notice.</li>
+      <li>This tool is provided "as-is" without warranties.</li>
+    </ol>
+
+    <h3>Privacy</h3>
+    <ol start="9">
+      <li>All processing is done client-side. No files are transmitted to any server.</li>
+      <li>Your files remain completely private and never leave your computer.</li>
+      <li>We do not store or share any user data. No analytics or cookies are used.</li>
+    </ol>
+    <p>The developer assumes no responsibility or liability for any use of this service. You use this service entirely at your own risk.</p>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
+  const firebaseConfig = {
+    apiKey: "AIzaSyBLfoyG0VNnrEfG8f6lu06GMclCSQkhKWY",
+    authDomain: "pdfcombineapp.firebaseapp.com",
+    projectId: "pdfcombineapp",
+    storageBucket: "pdfcombineapp.firebasestorage.app",
+    messagingSenderId: "885389557751",
+    appId: "1:885389557751:web:ebc382132b6cd2adcaf8f2",
+    measurementId: "G-C6G4Y65Y9N"
+  };
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
+
+<script>
+  const pdfInput = document.getElementById('pdfInput');
+  const fileList = document.getElementById('file-list');
+  const loadingDiv = document.getElementById('loading');
+
+  let filesArray = [];
+
+  pdfInput.addEventListener('change', () => {
+    const files = Array.from(pdfInput.files);
+    if (!files.length) return;
+
+    files.forEach(file => {
+      const fileIndex = filesArray.push(file) - 1;
+
+      const li = document.createElement('li');
+      li.setAttribute('data-index', fileIndex);
+      li.innerHTML = `
+          <span class="filename">${file.name}</span>
+          <span class="remove-btn">✕</span>
+      `;
+      fileList.appendChild(li);
+    });
+
+    pdfInput.value = '';
+  });
+
+  new Sortable(fileList, {
+    animation: 150,
+    scroll: true,
+    scrollSensitivity: 20,
+    scrollSpeed: 15,
+    handle: '.filename',  
+    filter: '.remove-btn',
+    onFilter: function (evt) {
+      if (evt.target.classList.contains('remove-btn')) {
+        removeFile(evt.target);
+      }
+    },
+    delay: 150,  
+    delayOnTouchOnly: true,  
+    touchStartThreshold: 5  
+  });
+
+  function removeFile(button) {
+    const li = button.closest('li');
+    const index = parseInt(li.getAttribute('data-index'));
+    filesArray[index] = null;
+    li.remove();
+  }
+
+  function clearAll() {
+    fileList.innerHTML = '';
+    filesArray = [];
+  }
+
+  function getWatermarkPosition(position, pageWidth, pageHeight, textWidth, textHeight, rotation) {
+    const margin = 10; 
+    const angle = (rotation * Math.PI) / 180; 
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+
+    const boundingBoxWidth = Math.abs(textWidth * cos) + Math.abs(textHeight * sin);
+    const boundingBoxHeight = Math.abs(textWidth * sin) + Math.abs(textHeight * cos);
+
+    let targetX, targetY;
+
+    switch (position) {
+    case 'top-left':
+      targetX = margin + boundingBoxWidth / 2;
+      targetY = pageHeight - margin - boundingBoxHeight / 2;
+      break;
+    case 'top-center':
+      targetX = pageWidth / 2;
+      targetY = pageHeight - margin - boundingBoxHeight / 2;
+      break;
+    case 'top-right':
+      targetX = pageWidth - margin - boundingBoxWidth / 2;
+      targetY = pageHeight - margin - boundingBoxHeight / 2;
+      break;
+    case 'middle-left':
+      targetX = margin + boundingBoxWidth / 2;
+      targetY = pageHeight / 2;
+      break;
+    case 'middle-center':
+      targetX = pageWidth / 2;
+      targetY = pageHeight / 2;
+      break;
+    case 'middle-right':
+      targetX = pageWidth - margin - boundingBoxWidth / 2;
+      targetY = pageHeight / 2;
+      break;
+    case 'bottom-left':
+      targetX = margin + boundingBoxWidth / 2;
+      targetY = margin + boundingBoxHeight / 2;
+      break;
+    case 'bottom-center':
+      targetX = pageWidth / 2;
+      targetY = margin + boundingBoxHeight / 2;
+      break;
+    case 'bottom-right':
+      targetX = pageWidth - margin - boundingBoxWidth / 2;
+      targetY = margin + boundingBoxHeight / 2;
+      break;
+        default: 
+          targetX = pageWidth / 2;
+          targetY = pageHeight / 2;
+          break;
+        }
+
+        const x = targetX - (textWidth / 2) * cos + (textHeight / 2) * sin;
+        const y = targetY - (textWidth / 2) * sin - (textHeight / 2) * cos;
+
+        return { x, y };
+      }
+
+      async function watermarkPDFs() {
+        loadingDiv.style.display = 'block';
+        const { PDFDocument, StandardFonts, rgb, degrees } = PDFLib;
+
+        const zip = new JSZip();
+
+        const orderedItems = fileList.querySelectorAll('li');
+        const orderedFiles = Array.from(orderedItems)
+        .map(li => parseInt(li.getAttribute('data-index')))
+        .map(i => filesArray[i])
+        .filter(f => f);
+
+        if (!orderedFiles.length) {
+          alert("No files to watermark.");
+          loadingDiv.style.display = 'none';
+          return;
+        }
+
+        const text = document.getElementById("confText").value;
+        const selectedFont = document.getElementById("textFont").value;
+        const size = parseInt(document.getElementById("textSize").value);
+        const rotation = parseInt(document.getElementById("textRotation").value);
+        const colorValue = document.getElementById("textColor").value;
+        const opacity = parseFloat(document.getElementById("textOpacity").value);
+        const position = document.getElementById("position").value;
+        
+
+        const color = rgb(
+          parseInt(colorValue.substr(1, 2), 16) / 255,
+          parseInt(colorValue.substr(3, 2), 16) / 255,
+          parseInt(colorValue.substr(5, 2), 16) / 255
+          );
+
+        for (const file of orderedFiles) {
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await PDFDocument.load(arrayBuffer);
+          const font = await pdf.embedFont(selectedFont);
+          const pages = pdf.getPages();
+
+          const textWidth = font.widthOfTextAtSize(text, size);
+          const textHeight = font.heightAtSize(size);
+
+          for (const page of pages) {
+            const { width, height } = page.getSize();
+
+            if (position === 'fill-page') {
+              
+              const angle = (rotation * Math.PI) / 180;
+              const cos = Math.cos(angle);
+              const sin = Math.sin(angle);
+
+              const boundingBoxWidth = Math.abs(textWidth * cos) + Math.abs(textHeight * sin);
+              const boundingBoxHeight = Math.abs(textWidth * sin) + Math.abs(textHeight * cos);
+
+              
+                const horizontalGap = boundingBoxWidth; 
+                const verticalGap = boundingBoxHeight -5; 
+
+                let rowIndex = 0;
+                for (let y = -verticalGap; y < height + verticalGap; y += verticalGap) {
+                    
+                  const startX = (rowIndex % 2 === 0) ? -horizontalGap : -horizontalGap / 2;
+                  for (let x = startX; x < width + horizontalGap; x += horizontalGap) {
+                    page.drawText(text, {
+                      x: x,
+                      y: y,
+                      font: font,
+                      size: size,
+                      color: color,
+                      opacity: opacity,
+                      rotate: degrees(rotation)
+                    });
+                  }
+                  rowIndex++;
+                }
+
+              } else {
+                
+                const { x, y } = getWatermarkPosition(position, width, height, textWidth, textHeight, rotation);
+                page.drawText(text, {
+                  x: x,
+                  y: y,
+                  font: font,
+                  size: size,
+                  color: color,
+                  opacity: opacity,
+                  rotate: degrees(rotation)
+                });
+              }
+            }
+
+            const pdfBytes = await pdf.save();
+            zip.file(file.name, pdfBytes, { base64: true });
+          }
+
+          if (orderedFiles.length > 1) {
+            zip.generateAsync({ type: "blob" })
+            .then(function(content) {
+              saveAs(content, "watermarked_pdfs.zip");
+            });
+          } else {
+            const firstPdf = await zip.file(orderedFiles[0].name).async("blob");
+            saveAs(firstPdf, `watermarked-${orderedFiles[0].name}`);
+          }
+
+          loadingDiv.style.display = 'none';
+        }
+        function openModal() {
+          document.getElementById('privacyModal').style.display = 'block';
+        }
+
+        function closeModal() {
+          document.getElementById('privacyModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+          const modal = document.getElementById('privacyModal');
+          if (event.target == modal) {
+            modal.style.display = 'none';
+          }
+        };
+      </script>
+    </body>
+    </html>
